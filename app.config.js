@@ -28,8 +28,12 @@ export default {
         NSMicrophoneUsageDescription:
           "This app needs access to your microphone to record audio for transcription.",
         ITSAppUsesNonExemptEncryption: false,
+        NSPhotoLibraryUsageDescription:
+          "This app doesn't use your photo library directly, but one of our dependencies requires this permission.",
+        UIBackgroundModes: [],
       },
       supportsTablet: true,
+      usesApnsToken: false,
     },
     android: {
       adaptiveIcon: {

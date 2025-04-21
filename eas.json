@@ -12,6 +12,10 @@
       "distribution": "store",
       "android": {
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "resourceClass": "m-medium",
+        "credentialsSource": "remote"
       }
     }
   },

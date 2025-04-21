@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Text,
   View,
-  Alert,
 } from "react-native";
 import { transcribeAudio } from "./services/transcriptionService";
 import { OPENAI_API_KEY } from "./config/openaiConfig";
@@ -52,12 +51,12 @@ export default function SpeechToTextApp() {
 
       setIsProcessing(false);
     } catch (error) {
-      console.error("Failed to start recording:", error);
       setError("Failed to start recording. Please try again.");
       setIsProcessing(false);
       setIsRecording(false);
     }
   };
+
   const stopRecording = async () => {
     if (!recording) return;
 
@@ -72,7 +71,6 @@ export default function SpeechToTextApp() {
           const transcribedText = await transcribeAudio(uri);
           setTranscript(transcribedText);
         } catch (transcriptionError) {
-          console.error("Transcription error:", transcriptionError);
           setError(
             "Failed to transcribe audio. Please check your API key and try again."
           );
@@ -83,7 +81,6 @@ export default function SpeechToTextApp() {
 
       setRecording(null);
     } catch (error) {
-      console.error("Failed to stop recording:", error);
       setError("Failed to process the recording. Please try again.");
     } finally {
       setIsProcessing(false);

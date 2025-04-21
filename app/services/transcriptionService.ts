@@ -5,6 +5,7 @@ import {
   WHISPER_MODEL,
 } from "../config/openaiConfig";
 import * as FileSystem from "expo-file-system";
+import { Platform } from "react-native";
 
 interface TranscriptionResponse {
   text: string;
@@ -12,6 +13,14 @@ interface TranscriptionResponse {
 
 export const transcribeAudio = async (audioUri: string): Promise<string> => {
   try {
+    // Handle web platform differently
+    if (Platform.OS === "web") {
+      // For web demo, return a simulated response
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API call delay
+      return "This is a simulated transcription for web demo. For full functionality, please use a mobile device.";
+    }
+
+    // Continue with native implementation for iOS/Android
     // Check if the file exists
     const fileInfo = await FileSystem.getInfoAsync(audioUri);
     if (!fileInfo.exists) {
@@ -51,10 +60,6 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
     // Return the transcribed text
     return response.data.text;
   } catch (error) {
-    console.error("Transcription error:", error);
-    if (axios.isAxiosError(error) && error.response) {
-      console.error("API Error:", error.response.data);
-    }
     throw new Error("Failed to transcribe audio");
   }
 };

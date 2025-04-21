@@ -1,11 +1,7 @@
 import "dotenv/config";
 
-// Use directly from process.env, log for debugging
+// Get API key from environment variables
 const apiKey = process.env.OPENAI_API_KEY || "";
-console.log("DEBUG - .env loaded in app.config.js:");
-console.log("- API key present:", !!apiKey);
-console.log("- API key length:", apiKey.length);
-console.log("- First 5 chars:", apiKey.substring(0, 5) + "...");
 
 export default {
   expo: {

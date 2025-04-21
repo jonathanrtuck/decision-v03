@@ -5,13 +5,6 @@ const apiKey = process.env.OPENAI_API_KEY || "";
 
 export default {
   expo: {
-    android: {
-      adaptiveIcon: {
-        backgroundColor: "#ffffff",
-        foregroundImage: "./assets/images/adaptive-icon.png",
-      },
-      permissions: ["android.permission.RECORD_AUDIO"],
-    },
     assetBundlePatterns: ["**/*"],
     experiments: { typedRoutes: true },
     // Pass environment variables directly to the app
@@ -20,13 +13,31 @@ export default {
       eas: { projectId: process.env.EAS_PROJECT_ID || "" },
       router: { origin: false },
     },
-    icon: "./assets/images/icon.png",
+    // App icons and splash screens
+    icon: "./assets/app-icons/ios/app-store-icon.png",
+    splash: {
+      image: "./assets/splash/splash-1242x2688.png",
+      resizeMode: "contain",
+      backgroundColor: "#FFFFFF",
+    },
     ios: {
+      buildNumber: "0.3.0",
+      bundleIdentifier: "com.decisiondating.v03",
+      icon: "./assets/app-icons/ios/app-store-icon.png",
       infoPlist: {
         NSMicrophoneUsageDescription:
           "This app needs access to your microphone to record audio for transcription.",
       },
       supportsTablet: true,
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/app-icons/android/adaptive-foreground.png",
+        backgroundColor: "#FFFFFF",
+      },
+      package: "com.decisiondating.v03",
+      versionCode: 1,
+      permissions: ["android.permission.RECORD_AUDIO"],
     },
     name: "decision-v03",
     newArchEnabled: true,
@@ -38,8 +49,8 @@ export default {
         "expo-splash-screen",
         {
           backgroundColor: "#ffffff",
-          image: "./assets/images/splash-icon.png",
-          imageWidth: 200,
+          image: "./assets/splash/splash-1242x2688.png",
+          imageWidth: 500,
           resizeMode: "contain",
         },
       ],
@@ -57,7 +68,7 @@ export default {
     version: "0.3.0",
     web: {
       bundler: "metro",
-      favicon: "./assets/images/favicon.png",
+      favicon: "./assets/app-icons/ios/icon-76x76@1x.png",
       output: "static",
     },
   },

@@ -10,11 +10,6 @@
     "production": {
       "autoIncrement": true,
       "distribution": "store",
-      "ios": {
-        "appleId": "apple@jrtucker.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "enterpriseProvisioning": "universal"
-      },
       "android": {
         "buildType": "app-bundle"
       }
@@ -28,8 +23,8 @@
     "production": {
       "ios": {
         "appleId": "apple@jrtucker.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-apple-team-id"
+        "ascAppId": "6744904508",
+        "appleTeamId": "5T8LXY49M8"
       },
       "android": {
         "track": "production"

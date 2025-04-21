@@ -27,6 +27,7 @@ export default {
       infoPlist: {
         NSMicrophoneUsageDescription:
           "This app needs access to your microphone to record audio for transcription.",
+        ITSAppUsesNonExemptEncryption: false,
       },
       supportsTablet: true,
     },

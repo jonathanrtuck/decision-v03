@@ -2,24 +2,24 @@ import { Audio } from "expo-av";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   SafeAreaView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
-import { transcribeAudio } from "./services/transcriptionService";
 import { OPENAI_API_KEY } from "./config/openaiConfig";
+import { transcribeAudio } from "./services/transcriptionService";
 
 const HAS_API_KEY = OPENAI_API_KEY && OPENAI_API_KEY.length > 0;
 
 export default function SpeechToTextApp() {
+  const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [transcript, setTranscript] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
 
   const startRecording = async () => {
     // Check if API key is configured
@@ -56,7 +56,6 @@ export default function SpeechToTextApp() {
       setIsRecording(false);
     }
   };
-
   const stopRecording = async () => {
     if (!recording) return;
 
@@ -113,12 +112,6 @@ export default function SpeechToTextApp() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.title}>OpenAI Whisper Speech-to-Text</Text>
-        {!HAS_API_KEY && (
-          <Text style={styles.apiKeyWarning}>⚠️ API key not configured</Text>
-        )}
-      </View>
       <View style={styles.transcriptContainer}>
         {isProcessing ? (
           <View style={styles.processingContainer}>
@@ -137,18 +130,20 @@ export default function SpeechToTextApp() {
         )}
       </View>
       <View style={styles.buttonContainer}>
-        <Button
-          title={isRecording ? "Stop Recording" : "Start Recording"}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            isRecording ? styles.stopButton : styles.startButton,
+            isProcessing && !isRecording && styles.disabledButton,
+          ]}
           onPress={isRecording ? stopRecording : startRecording}
-          color={isRecording ? "#FF6347" : "#4CAF50"}
           disabled={isProcessing && !isRecording}
-        />
+          activeOpacity={0.8}>
+          <Text style={styles.buttonText}>
+            {isRecording ? "Stop Recording" : "Start Recording"}
+          </Text>
+        </TouchableOpacity>
       </View>
-      <Text style={styles.noteText}>
-        {HAS_API_KEY
-          ? "OpenAI API key is configured ✓"
-          : "Set your OpenAI API key in the .env file"}
-      </Text>
     </SafeAreaView>
   );
 }
@@ -157,24 +152,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-  },
-  headerContainer: {
-    padding: 20,
-    backgroundColor: "#2196F3",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "white",
-  },
-  apiKeyWarning: {
-    color: "#FFF",
-    backgroundColor: "rgba(255, 0, 0, 0.7)",
-    padding: 5,
-    borderRadius: 5,
-    marginTop: 5,
-    fontSize: 12,
   },
   transcriptContainer: {
     flex: 1,
@@ -189,6 +166,33 @@ const styles = StyleSheet.create({
   buttonContainer: {
     margin: 20,
   },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 3, // Android shadow
+    shadowColor: "#000", // iOS shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  startButton: {
+    backgroundColor: "#4CAF50",
+  },
+  stopButton: {
+    backgroundColor: "#FF6347",
+  },
+  disabledButton: {
+    backgroundColor: "#cccccc",
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
   processingContainer: {
     alignItems: "center",
     justifyContent: "center",
@@ -201,12 +205,5 @@ const styles = StyleSheet.create({
     color: "red",
     textAlign: "center",
     marginTop: 10,
-  },
-  noteText: {
-    fontSize: 12,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 10,
-    paddingHorizontal: 20,
   },
 });

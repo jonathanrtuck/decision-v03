@@ -2,6 +2,7 @@ import { Audio } from "expo-av";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -10,6 +11,7 @@ import {
 } from "react-native";
 import { OPENAI_API_KEY } from "./config/openaiConfig";
 import { transcribeAudio } from "./services/transcriptionService";
+import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
 
 const HAS_API_KEY = OPENAI_API_KEY && OPENAI_API_KEY.length > 0;
 
@@ -22,8 +24,8 @@ export default function SpeechToTextApp() {
   const [transcript, setTranscript] = useState<string>("");
 
   const startRecording = async () => {
-    // Check if API key is configured
-    if (!HAS_API_KEY) {
+    // Check if API key is configured - only needed for Whisper fallback
+    if (!HAS_API_KEY && Platform.OS !== "ios") {
       setError(
         "OpenAI API key is not configured. Please add it to your .env file."
       );
@@ -66,7 +68,7 @@ export default function SpeechToTextApp() {
 
       if (uri) {
         try {
-          // Send audio to OpenAI Whisper API for transcription
+          // Send audio to transcription service (iOS native or OpenAI Whisper API)
           const transcribedText = await transcribeAudio(uri);
           setTranscript(transcribedText);
         } catch (transcriptionError) {
@@ -89,8 +91,25 @@ export default function SpeechToTextApp() {
 
   useEffect(() => {
     (async () => {
+      // Request microphone permission
       const { status } = await Audio.requestPermissionsAsync();
       setHasPermission(status === "granted");
+
+      // Request speech recognition permission for iOS
+      if (Platform.OS === "ios") {
+        try {
+          const speechPermission =
+            await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+          if (!speechPermission.granted) {
+            console.warn("Speech recognition permission not granted");
+          }
+        } catch (error) {
+          console.error(
+            "Error requesting speech recognition permission:",
+            error
+          );
+        }
+      }
     })();
   }, []);
 

@@ -1,25 +1,29 @@
 import "dotenv/config";
 
-// Get API key from environment variables
-const apiKey = process.env.OPENAI_API_KEY || "";
+const openaiApiKey = process.env.OPENAI_API_KEY || "";
+const projectId = process.env.EAS_PROJECT_ID || "";
 
 export default {
   expo: {
+    android: {
+      adaptiveIcon: {
+        backgroundColor: "#FFFFFF",
+        foregroundImage: "./assets/app-icons/android/adaptive-foreground.png",
+      },
+      package: "com.decisiondating.v03",
+      permissions: ["android.permission.RECORD_AUDIO"],
+      versionCode: 1,
+    },
     assetBundlePatterns: ["**/*"],
     experiments: { typedRoutes: true },
     // Pass environment variables directly to the app
     extra: {
-      openaiApiKey: apiKey,
-      eas: { projectId: process.env.EAS_PROJECT_ID || "" },
+      openaiApiKey,
+      eas: { projectId },
       router: { origin: false },
     },
     // App icons and splash screens
     icon: "./assets/app-icons/ios/app-store-icon.png",
-    splash: {
-      image: "./assets/splash/splash-1242x2688.png",
-      resizeMode: "contain",
-      backgroundColor: "#FFFFFF",
-    },
     ios: {
       buildNumber: "0.3.0",
       bundleIdentifier: "com.decisiondating.v03",
@@ -27,6 +31,8 @@ export default {
       infoPlist: {
         NSMicrophoneUsageDescription:
           "This app needs access to your microphone to record audio for transcription.",
+        NSSpeechRecognitionUsageDescription:
+          "This app uses speech recognition to transcribe your audio to text.",
         ITSAppUsesNonExemptEncryption: false,
         NSPhotoLibraryUsageDescription:
           "This app doesn't use your photo library directly, but one of our dependencies requires this permission.",
@@ -34,15 +40,6 @@ export default {
       },
       supportsTablet: true,
       usesApnsToken: false,
-    },
-    android: {
-      adaptiveIcon: {
-        foregroundImage: "./assets/app-icons/android/adaptive-foreground.png",
-        backgroundColor: "#FFFFFF",
-      },
-      package: "com.decisiondating.v03",
-      versionCode: 1,
-      permissions: ["android.permission.RECORD_AUDIO"],
     },
     name: "decision-v03",
     newArchEnabled: true,
@@ -69,6 +66,11 @@ export default {
     ],
     scheme: "myapp",
     slug: "decision-v03",
+    splash: {
+      backgroundColor: "#FFFFFF",
+      image: "./assets/splash/splash-1242x2688.png",
+      resizeMode: "contain",
+    },
     userInterfaceStyle: "automatic",
     version: "0.3.0",
     web: {

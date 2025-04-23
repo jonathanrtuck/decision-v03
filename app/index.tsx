@@ -12,10 +12,11 @@ import {
 import { OPENAI_API_KEY } from "./config/openaiConfig";
 import { transcribeAudio } from "./services/transcriptionService";
 import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
+import { Stack } from "expo-router";
 
 const HAS_API_KEY = OPENAI_API_KEY && OPENAI_API_KEY.length > 0;
 
-export default function SpeechToTextApp() {
+export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -130,40 +131,43 @@ export default function SpeechToTextApp() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.transcriptContainer}>
-        {isProcessing ? (
-          <View style={styles.processingContainer}>
-            <ActivityIndicator size="large" color="#0000ff" />
-            <Text style={styles.processingText}>
-              {isRecording ? "Listening…" : "Transcribing audio…"}
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.transcriptContainer}>
+          {isProcessing ? (
+            <View style={styles.processingContainer}>
+              <ActivityIndicator size="large" color="#0000ff" />
+              <Text style={styles.processingText}>
+                {isRecording ? "Listening…" : "Transcribing audio…"}
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.transcript}>
+                {transcript || "Press the button and start speaking…"}
+              </Text>
+              {error && <Text style={styles.errorText}>{error}</Text>}
+            </>
+          )}
+        </View>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              isRecording ? styles.stopButton : styles.startButton,
+              isProcessing && !isRecording && styles.disabledButton,
+            ]}
+            onPress={isRecording ? stopRecording : startRecording}
+            disabled={isProcessing && !isRecording}
+            activeOpacity={0.8}>
+            <Text style={styles.buttonText}>
+              {isRecording ? "Stop Recording" : "Start Recording"}
             </Text>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.transcript}>
-              {transcript || "Press the button and start speaking…"}
-            </Text>
-            {error && <Text style={styles.errorText}>{error}</Text>}
-          </>
-        )}
-      </View>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            isRecording ? styles.stopButton : styles.startButton,
-            isProcessing && !isRecording && styles.disabledButton,
-          ]}
-          onPress={isRecording ? stopRecording : startRecording}
-          disabled={isProcessing && !isRecording}
-          activeOpacity={0.8}>
-          <Text style={styles.buttonText}>
-            {isRecording ? "Stop Recording" : "Start Recording"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </>
   );
 }
 

@@ -2,6 +2,7 @@ import { Audio } from "expo-av";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Platform,
   SafeAreaView,
   StyleSheet,
@@ -13,10 +14,12 @@ import { OPENAI_API_KEY } from "./config/openaiConfig";
 import { transcribeAudio } from "./services/transcriptionService";
 import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
 import { Stack } from "expo-router";
+import * as Haptics from "expo-haptics";
 
 const HAS_API_KEY = OPENAI_API_KEY && OPENAI_API_KEY.length > 0;
 
 export default function App() {
+  const [buttonScale] = useState<Animated.Value>(new Animated.Value(1));
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -24,6 +27,11 @@ export default function App() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [transcript, setTranscript] = useState<string>("");
 
+  const getStatusMessage = () => {
+    if (transcript) return transcript;
+    if (isRecording) return "Listening… Release when finished speaking";
+    return "Press and hold the button to start speaking";
+  };
   const startRecording = async () => {
     // Check if API key is configured - only needed for Whisper fallback
     if (!HAS_API_KEY && Platform.OS !== "ios") {
@@ -39,6 +47,9 @@ export default function App() {
       setIsProcessing(true);
       setTranscript("");
       setError(null);
+
+      // Provide haptic feedback
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       // Set up recording
       await Audio.setAudioModeAsync({
@@ -66,6 +77,9 @@ export default function App() {
       setIsProcessing(true);
       // Update processing message
       setIsRecording(false);
+
+      // Provide haptic feedback when stopping
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
@@ -105,6 +119,28 @@ export default function App() {
       setIsProcessing(false);
     }
   };
+  const onPressIn = async () => {
+    if (isProcessing) return;
+
+    Animated.spring(buttonScale, {
+      toValue: 0.9,
+      useNativeDriver: true,
+      speed: 20,
+    }).start();
+
+    await startRecording();
+  };
+  const onPressOut = async () => {
+    Animated.spring(buttonScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 20,
+    }).start();
+
+    if (isRecording) {
+      await stopRecording();
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -129,13 +165,6 @@ export default function App() {
       }
     })();
   }, []);
-
-  // Display message based on current state
-  const getStatusMessage = () => {
-    if (transcript) return transcript;
-    if (isRecording) return "Listening... (tap Stop when finished)";
-    return "Press the button and start speaking…";
-  };
 
   if (hasPermission === null) {
     return (
@@ -172,25 +201,30 @@ export default function App() {
               {isRecording && (
                 <View style={styles.recordingIndicator}>
                   <ActivityIndicator size="small" color="#FF6347" />
+                  <Text style={styles.recordingText}>Recording…</Text>
                 </View>
               )}
             </>
           )}
         </View>
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              isRecording ? styles.stopButton : styles.startButton,
-              isProcessing && !isRecording && styles.disabledButton,
-            ]}
-            onPress={isRecording ? stopRecording : startRecording}
-            disabled={isProcessing && !isRecording}
-            activeOpacity={0.8}>
-            <Text style={styles.buttonText}>
-              {isRecording ? "Stop Recording" : "Start Recording"}
-            </Text>
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+            <TouchableOpacity
+              style={[
+                styles.button,
+                isRecording ? styles.stopButton : styles.startButton,
+                isProcessing && !isRecording && styles.disabledButton,
+              ]}
+              onPressIn={onPressIn}
+              onPressOut={onPressOut}
+              disabled={isProcessing && !isRecording}
+              activeOpacity={0.7}
+              delayPressIn={0}>
+              <Text style={styles.buttonText}>
+                {isRecording ? "Recording…" : "Hold to Record"}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </SafeAreaView>
     </>
@@ -214,18 +248,20 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     margin: 20,
+    alignItems: "center",
   },
   button: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 3, // Android shadow
+    elevation: 5, // Android shadow
     shadowColor: "#000", // iOS shadow
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
-    shadowRadius: 3,
+    shadowRadius: 4,
+    minWidth: 180,
   },
   startButton: {
     backgroundColor: "#4CAF50",
@@ -258,5 +294,13 @@ const styles = StyleSheet.create({
   recordingIndicator: {
     marginTop: 20,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  recordingText: {
+    color: "#FF6347",
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

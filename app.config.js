@@ -27,6 +27,7 @@ export default {
     ios: {
       buildNumber: "0.3.0",
       bundleIdentifier: "com.decisiondating.v03",
+      hermesBuildFlags: ["-O", "-output-source-map"],
       icon: "./assets/app-icons/ios/app-store-icon.png",
       infoPlist: {
         NSMicrophoneUsageDescription:
@@ -38,6 +39,7 @@ export default {
           "This app doesn't use your photo library directly, but one of our dependencies requires this permission.",
         UIBackgroundModes: [],
       },
+      jsEngine: "hermes",
       supportsTablet: true,
       usesApnsToken: false,
     },

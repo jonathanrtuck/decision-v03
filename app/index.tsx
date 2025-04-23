@@ -165,7 +165,9 @@ export default function App() {
             </View>
           ) : (
             <>
-              <Text style={styles.transcript}>{getStatusMessage()}</Text>
+              <Text style={styles.transcript} selectable={true}>
+                {getStatusMessage()}
+              </Text>
               {error && <Text style={styles.errorText}>{error}</Text>}
               {isRecording && (
                 <View style={styles.recordingIndicator}>

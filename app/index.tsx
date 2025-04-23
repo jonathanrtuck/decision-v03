@@ -52,7 +52,7 @@ export default function App() {
       );
       setRecording(recording);
 
-      setIsProcessing(false);
+      // Keep isProcessing true while recording
     } catch (error) {
       setError("Failed to start recording. Please try again.");
       setIsProcessing(false);
@@ -64,6 +64,9 @@ export default function App() {
 
     try {
       setIsProcessing(true);
+      // Update processing message
+      setIsRecording(false);
+
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
 
@@ -71,11 +74,25 @@ export default function App() {
         try {
           // Send audio to transcription service (iOS native or OpenAI Whisper API)
           const transcribedText = await transcribeAudio(uri);
-          setTranscript(transcribedText);
-        } catch (transcriptionError) {
-          setError(
-            "Failed to transcribe audio. Please check your API key and try again."
-          );
+
+          // Check if we got an empty transcription result
+          if (!transcribedText || transcribedText.trim() === "") {
+            setError("No speech detected. Please try speaking again.");
+          } else {
+            setTranscript(transcribedText);
+          }
+        } catch (transcriptionError: any) {
+          // Check for specific error messages that might indicate no speech
+          if (
+            transcriptionError.message &&
+            (transcriptionError.message.includes("no speech") ||
+              transcriptionError.message.includes("silence"))
+          ) {
+            setError("No speech detected. Please try speaking again.");
+          } else {
+            setError("Failed to transcribe audio. Please try again.");
+            console.error("Transcription error:", transcriptionError);
+          }
         }
       } else {
         setError("No audio recorded. Please try again.");
@@ -86,7 +103,6 @@ export default function App() {
       setError("Failed to process the recording. Please try again.");
     } finally {
       setIsProcessing(false);
-      setIsRecording(false);
     }
   };
 
@@ -114,6 +130,13 @@ export default function App() {
     })();
   }, []);
 
+  // Display message based on current state
+  const getStatusMessage = () => {
+    if (transcript) return transcript;
+    if (isRecording) return "Listening... (tap Stop when finished)";
+    return "Press the button and start speaking…";
+  };
+
   if (hasPermission === null) {
     return (
       <View style={styles.container}>
@@ -135,19 +158,20 @@ export default function App() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container}>
         <View style={styles.transcriptContainer}>
-          {isProcessing ? (
+          {isProcessing && !isRecording ? (
             <View style={styles.processingContainer}>
               <ActivityIndicator size="large" color="#0000ff" />
-              <Text style={styles.processingText}>
-                {isRecording ? "Listening…" : "Transcribing audio…"}
-              </Text>
+              <Text style={styles.processingText}>Transcribing audio…</Text>
             </View>
           ) : (
             <>
-              <Text style={styles.transcript}>
-                {transcript || "Press the button and start speaking…"}
-              </Text>
+              <Text style={styles.transcript}>{getStatusMessage()}</Text>
               {error && <Text style={styles.errorText}>{error}</Text>}
+              {isRecording && (
+                <View style={styles.recordingIndicator}>
+                  <ActivityIndicator size="small" color="#FF6347" />
+                </View>
+              )}
             </>
           )}
         </View>
@@ -228,5 +252,9 @@ const styles = StyleSheet.create({
     color: "red",
     textAlign: "center",
     marginTop: 10,
+  },
+  recordingIndicator: {
+    marginTop: 20,
+    alignItems: "center",
   },
 });

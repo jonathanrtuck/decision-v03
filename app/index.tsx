@@ -1,4 +1,7 @@
 import { Audio } from "expo-av";
+import * as Haptics from "expo-haptics";
+import { Stack, useRouter } from "expo-router";
+import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,13 +15,11 @@ import {
 } from "react-native";
 import { OPENAI_API_KEY } from "./config/openaiConfig";
 import { transcribeAudio } from "./services/transcriptionService";
-import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
-import { Stack } from "expo-router";
-import * as Haptics from "expo-haptics";
 
 const HAS_API_KEY = OPENAI_API_KEY && OPENAI_API_KEY.length > 0;
 
 export default function App() {
+  const router = useRouter();
   const [buttonScale] = useState<Animated.Value>(new Animated.Value(1));
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -26,7 +27,6 @@ export default function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [transcript, setTranscript] = useState<string>("");
-
   const getStatusMessage = () => {
     if (transcript) return transcript;
     if (isRecording) return "Listening… Release when finished speaking";
@@ -207,6 +207,13 @@ export default function App() {
             </>
           )}
         </View>
+        <View style={styles.actionContainer}>
+          <TouchableOpacity
+            style={styles.bleButton}
+            onPress={() => router.push("/bluetooth" as any)}>
+            <Text style={styles.bleButtonText}>Bluetooth Devices</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.buttonContainer}>
           <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
             <TouchableOpacity
@@ -302,5 +309,28 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     fontWeight: "500",
+  },
+  actionContainer: {
+    marginHorizontal: 20,
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  bleButton: {
+    backgroundColor: "#2196F3",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    width: "100%",
+    alignItems: "center",
+  },
+  bleButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

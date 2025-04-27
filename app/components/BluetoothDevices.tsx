@@ -9,97 +9,159 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
 import { Device } from "react-native-ble-plx";
 import BleManager from "../services/bleManager";
 
-export default function BluetoothDevices() {
+// Define a safer version of the component with error handling
+export default function BluetoothDevicesSafe() {
+  const [hasError, setHasError] = useState(false);
+
+  // Error boundary implementation
+  if (hasError) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Bluetooth Devices</Text>
+        <Text style={styles.errorText}>
+          Something went wrong with the Bluetooth functionality.
+        </Text>
+        <View style={styles.buttonContainer}>
+          <Button title="Try Again" onPress={() => setHasError(false)} />
+        </View>
+      </View>
+    );
+  }
+
+  try {
+    return <BluetoothDevicesInner onError={() => setHasError(true)} />;
+  } catch (error) {
+    console.error("Error rendering Bluetooth component:", error);
+    setHasError(true);
+    return null;
+  }
+}
+
+// Inner component with the actual functionality
+function BluetoothDevicesInner({ onError }: { onError: () => void }) {
   const [connectionStatus, setConnectionStatus] =
     useState<string>("Not connected");
   const [devices, setDevices] = useState<Device[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
-  const bleManager = BleManager.getInstance();
+  const [manager, setManager] = useState<any>(null);
 
+  // Safer function to handle status changes
   const handleStatusChanged = () => {
-    console.log("Status changed callback triggered");
-    setDevices(bleManager.getDevices());
-    setConnectionStatus(bleManager.getConnectionStatus());
-    setIsScanning(bleManager.getIsScanning());
+    try {
+      console.log("Status changed callback triggered");
+      if (!manager) return;
+
+      setDevices(manager.getDevices() || []);
+      setConnectionStatus(manager.getConnectionStatus() || "Not connected");
+      setIsScanning(manager.getIsScanning() || false);
+    } catch (error) {
+      console.error("Error in status changed handler:", error);
+      setError("Error updating status");
+    }
   };
 
+  // Safer version of startScan
   const startScan = () => {
-    if (!isInitialized) {
-      setError("Bluetooth is not initialized yet");
-      return;
-    }
+    try {
+      if (!isInitialized || !manager) {
+        setError("Bluetooth is not initialized yet");
+        return;
+      }
 
-    if (connectionStatus.includes("PoweredOff")) {
-      Alert.alert(
-        "Bluetooth is turned off",
-        "Please enable Bluetooth in your device settings to scan for devices.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Open Settings",
-            onPress: () => Linking.openSettings(),
-          },
-        ]
-      );
-      return;
-    }
+      if (connectionStatus.includes("PoweredOff")) {
+        Alert.alert(
+          "Bluetooth is turned off",
+          "Please enable Bluetooth in your device settings to scan for devices.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => Linking.openSettings(),
+            },
+          ]
+        );
+        return;
+      }
 
-    if (connectionStatus.includes("Unauthorized")) {
-      Alert.alert(
-        "Bluetooth permission denied",
-        "Please enable Bluetooth permissions in your device settings.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Open Settings",
-            onPress: () => Linking.openSettings(),
-          },
-        ]
-      );
-      return;
-    }
+      if (connectionStatus.includes("Unauthorized")) {
+        Alert.alert(
+          "Bluetooth permission denied",
+          "Please enable Bluetooth permissions in your device settings.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => Linking.openSettings(),
+            },
+          ]
+        );
+        return;
+      }
 
-    console.log("Starting scan...");
-    setIsScanning(true);
-    bleManager.startScan();
+      console.log("Starting scan...");
+      setIsScanning(true);
+      manager.startScan();
+    } catch (error) {
+      console.error("Error starting scan:", error);
+      setError("Failed to start scan");
+      setIsScanning(false);
+    }
   };
 
+  // Safer stopScan
   const stopScan = () => {
-    console.log("Stopping scan...");
-    bleManager.stopScan();
-    setIsScanning(false);
+    try {
+      console.log("Stopping scan...");
+      if (manager) {
+        manager.stopScan();
+      }
+      setIsScanning(false);
+    } catch (error) {
+      console.error("Error stopping scan:", error);
+      setIsScanning(false);
+    }
   };
 
+  // Safer connectToDevice
   const connectToDevice = async (deviceId: string) => {
     try {
       console.log("Connecting to device:", deviceId);
-      await bleManager.connectToDevice(deviceId);
+      if (!manager) return;
+
+      await manager.connectToDevice(deviceId);
     } catch (error) {
       console.error("Error connecting to device:", error);
       setError("Failed to connect to device");
     }
   };
 
+  // Safer disconnectDevice
   const disconnectDevice = async () => {
     try {
       console.log("Disconnecting device");
-      await bleManager.disconnectDevice();
+      if (!manager) return;
+
+      await manager.disconnectDevice();
     } catch (error) {
       console.error("Error disconnecting device:", error);
       setError("Failed to disconnect device");
     }
   };
 
+  // Safer requestAudioStreaming
   const requestAudioStreaming = async () => {
     try {
       console.log("Requesting audio streaming");
-      const success = await bleManager.requestAudioStreaming();
+      if (!manager) return;
+
+      const success = await manager.requestAudioStreaming();
       if (!success) {
         setError("Failed to start audio streaming");
       }
@@ -109,26 +171,72 @@ export default function BluetoothDevices() {
     }
   };
 
-  // Check if Bluetooth is available based on status
+  // Safer isBluetoothAvailable
   const isBluetoothAvailable = () => {
-    return (
-      connectionStatus.includes("Ready") ||
-      connectionStatus.includes("Connected") ||
-      (!connectionStatus.includes("Unknown") &&
-        !connectionStatus.includes("Unsupported") &&
-        !connectionStatus.includes("Unauthorized") &&
-        !connectionStatus.includes("PoweredOff") &&
-        !connectionStatus.includes("Resetting"))
-    );
+    try {
+      return (
+        connectionStatus.includes("Ready") ||
+        connectionStatus.includes("Connected") ||
+        (!connectionStatus.includes("Unknown") &&
+          !connectionStatus.includes("Unsupported") &&
+          !connectionStatus.includes("Unauthorized") &&
+          !connectionStatus.includes("PoweredOff") &&
+          !connectionStatus.includes("Resetting"))
+      );
+    } catch (error) {
+      console.error("Error checking Bluetooth availability:", error);
+      return false;
+    }
   };
 
+  // Initialize manager with error handling
   useEffect(() => {
     const initBle = async () => {
       try {
         console.log("Initializing BLE manager");
         setError(null);
-        const initialized = await bleManager.init();
-        console.log("BLE initialization result:", initialized);
+
+        // Check if we're on an iOS simulator (which doesn't support BLE)
+        const isIosSimulator =
+          Platform.OS === "ios" &&
+          Platform.isPad === false &&
+          !Platform.isTV &&
+          !/\(MacIntel\)/i.test(navigator?.userAgent);
+
+        if (isIosSimulator) {
+          console.log(
+            "Running on iOS simulator - BLE may not be fully supported"
+          );
+          setError("Bluetooth may not work in simulator");
+          // Continue anyway to display UI
+        }
+
+        // Get manager safely
+        let bleManagerInstance = null;
+        try {
+          bleManagerInstance = BleManager.getInstance();
+          setManager(bleManagerInstance);
+        } catch (error) {
+          console.error("Error getting BLE manager instance:", error);
+          setError("Failed to initialize Bluetooth manager");
+          return;
+        }
+
+        if (!bleManagerInstance) {
+          setError("Could not create Bluetooth manager");
+          return;
+        }
+
+        // Initialize safely
+        let initialized = false;
+        try {
+          initialized = await bleManagerInstance.init();
+          console.log("BLE initialization result:", initialized);
+        } catch (initError) {
+          console.error("Error in BLE init:", initError);
+          setError("Bluetooth initialization failed");
+          return;
+        }
 
         if (!initialized) {
           setError("Failed to initialize Bluetooth");
@@ -136,22 +244,38 @@ export default function BluetoothDevices() {
         }
 
         setIsInitialized(true);
-        bleManager.onStatusChanged = handleStatusChanged;
-        handleStatusChanged(); // Initial update
+
+        // Set callback safely
+        try {
+          bleManagerInstance.onStatusChanged = handleStatusChanged;
+          handleStatusChanged(); // Initial update
+        } catch (callbackError) {
+          console.error("Error setting up status callback:", callbackError);
+        }
       } catch (error) {
         console.error("Failed to initialize BLE:", error);
         setError(
           "Failed to initialize Bluetooth: " +
             (error instanceof Error ? error.message : String(error))
         );
+        onError(); // Notify parent of critical error
       }
     };
 
-    initBle();
+    initBle().catch((err) => {
+      console.error("Unhandled error in initBle:", err);
+      setError("Unhandled error in Bluetooth initialization");
+    });
 
     return () => {
-      console.log("Cleaning up BLE manager");
-      bleManager.dispose();
+      try {
+        console.log("Cleaning up BLE manager");
+        if (manager) {
+          manager.dispose();
+        }
+      } catch (error) {
+        console.error("Error disposing BLE manager:", error);
+      }
     };
   }, []);
 
@@ -219,16 +343,18 @@ export default function BluetoothDevices() {
       )}
 
       <FlatList
-        data={devices}
+        data={devices || []}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.deviceItem}
             onPress={() => connectToDevice(item.id)}>
-            <Text style={styles.deviceName}>{item.name}</Text>
-            <Text style={styles.deviceId}>{item.id}</Text>
+            <Text style={styles.deviceName}>
+              {item.name || "Unknown Device"}
+            </Text>
+            <Text style={styles.deviceId}>{item.id || "No ID"}</Text>
           </TouchableOpacity>
         )}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id || Math.random().toString()}
         style={styles.list}
         ListEmptyComponent={
           <Text style={styles.emptyText}>

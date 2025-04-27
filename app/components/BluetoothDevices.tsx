@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Button,
   FlatList,
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -19,38 +21,115 @@ export default function BluetoothDevices() {
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const bleManager = BleManager.getInstance();
+
   const handleStatusChanged = () => {
+    console.log("Status changed callback triggered");
     setDevices(bleManager.getDevices());
     setConnectionStatus(bleManager.getConnectionStatus());
     setIsScanning(bleManager.getIsScanning());
   };
+
   const startScan = () => {
     if (!isInitialized) {
       setError("Bluetooth is not initialized yet");
       return;
     }
+
+    if (connectionStatus.includes("PoweredOff")) {
+      Alert.alert(
+        "Bluetooth is turned off",
+        "Please enable Bluetooth in your device settings to scan for devices.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Open Settings",
+            onPress: () => Linking.openSettings(),
+          },
+        ]
+      );
+      return;
+    }
+
+    if (connectionStatus.includes("Unauthorized")) {
+      Alert.alert(
+        "Bluetooth permission denied",
+        "Please enable Bluetooth permissions in your device settings.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Open Settings",
+            onPress: () => Linking.openSettings(),
+          },
+        ]
+      );
+      return;
+    }
+
+    console.log("Starting scan...");
     setIsScanning(true);
     bleManager.startScan();
   };
+
   const stopScan = () => {
+    console.log("Stopping scan...");
     bleManager.stopScan();
     setIsScanning(false);
   };
+
   const connectToDevice = async (deviceId: string) => {
-    await bleManager.connectToDevice(deviceId);
+    try {
+      console.log("Connecting to device:", deviceId);
+      await bleManager.connectToDevice(deviceId);
+    } catch (error) {
+      console.error("Error connecting to device:", error);
+      setError("Failed to connect to device");
+    }
   };
+
   const disconnectDevice = async () => {
-    await bleManager.disconnectDevice();
+    try {
+      console.log("Disconnecting device");
+      await bleManager.disconnectDevice();
+    } catch (error) {
+      console.error("Error disconnecting device:", error);
+      setError("Failed to disconnect device");
+    }
   };
+
   const requestAudioStreaming = async () => {
-    await bleManager.requestAudioStreaming();
+    try {
+      console.log("Requesting audio streaming");
+      const success = await bleManager.requestAudioStreaming();
+      if (!success) {
+        setError("Failed to start audio streaming");
+      }
+    } catch (error) {
+      console.error("Error requesting audio streaming:", error);
+      setError("Error starting audio streaming");
+    }
+  };
+
+  // Check if Bluetooth is available based on status
+  const isBluetoothAvailable = () => {
+    return (
+      connectionStatus.includes("Ready") ||
+      connectionStatus.includes("Connected") ||
+      (!connectionStatus.includes("Unknown") &&
+        !connectionStatus.includes("Unsupported") &&
+        !connectionStatus.includes("Unauthorized") &&
+        !connectionStatus.includes("PoweredOff") &&
+        !connectionStatus.includes("Resetting"))
+    );
   };
 
   useEffect(() => {
     const initBle = async () => {
       try {
+        console.log("Initializing BLE manager");
         setError(null);
         const initialized = await bleManager.init();
+        console.log("BLE initialization result:", initialized);
+
         if (!initialized) {
           setError("Failed to initialize Bluetooth");
           return;
@@ -58,6 +137,7 @@ export default function BluetoothDevices() {
 
         setIsInitialized(true);
         bleManager.onStatusChanged = handleStatusChanged;
+        handleStatusChanged(); // Initial update
       } catch (error) {
         console.error("Failed to initialize BLE:", error);
         setError(
@@ -70,6 +150,7 @@ export default function BluetoothDevices() {
     initBle();
 
     return () => {
+      console.log("Cleaning up BLE manager");
       bleManager.dispose();
     };
   }, []);
@@ -79,12 +160,33 @@ export default function BluetoothDevices() {
       <Text style={styles.title}>Bluetooth Devices</Text>
       {error && <Text style={styles.errorText}>{error}</Text>}
       <Text style={styles.status}>Status: {connectionStatus}</Text>
+
+      <View style={styles.infoBox}>
+        {connectionStatus.includes("Unknown") && (
+          <Text style={styles.infoText}>
+            Bluetooth state is unknown. Make sure Bluetooth is enabled and the
+            app has permissions.
+          </Text>
+        )}
+        {connectionStatus.includes("PoweredOff") && (
+          <Text style={styles.infoText}>
+            Bluetooth is turned off. Please enable Bluetooth in your device
+            settings.
+          </Text>
+        )}
+        {connectionStatus.includes("Unauthorized") && (
+          <Text style={styles.infoText}>
+            Bluetooth permissions not granted. Please enable them in settings.
+          </Text>
+        )}
+      </View>
+
       <View style={styles.buttonContainer}>
         {!isScanning ? (
           <Button
             title="Scan for Devices"
             onPress={startScan}
-            disabled={!isInitialized}
+            disabled={!isInitialized || !isBluetoothAvailable()}
           />
         ) : (
           <Button title="Stop Scanning" onPress={stopScan} />
@@ -99,12 +201,23 @@ export default function BluetoothDevices() {
           </>
         )}
       </View>
+
+      {!isBluetoothAvailable() && (
+        <View style={styles.settingsButton}>
+          <Button
+            title="Open Settings"
+            onPress={() => Linking.openSettings()}
+          />
+        </View>
+      )}
+
       {isScanning && (
         <View style={styles.scanningContainer}>
           <ActivityIndicator size="small" color="#0000ff" />
           <Text style={styles.scanningText}>Scanning for devices…</Text>
         </View>
       )}
+
       <FlatList
         data={devices}
         renderItem={({ item }) => (
@@ -142,11 +255,25 @@ const styles = StyleSheet.create({
   },
   status: {
     fontSize: 16,
+    marginBottom: 8,
+  },
+  infoBox: {
+    backgroundColor: "#e6f7ff",
+    padding: 12,
+    borderRadius: 8,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#91d5ff",
+  },
+  infoText: {
+    color: "#0050b3",
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
+    marginBottom: 16,
+  },
+  settingsButton: {
     marginBottom: 16,
   },
   scanningContainer: {

@@ -42,21 +42,65 @@ class BleManager {
       // Create BleManagerPlx instance here instead of in constructor
       this.manager = new BleManagerPlx();
 
+      console.log("BLE Manager created successfully");
+
       // Check permissions on Android
       if (Platform.OS === "android") {
         const granted = await this.requestPermissions();
         if (!granted) {
-          throw new Error("Bluetooth permissions not granted");
+          console.error("Bluetooth permissions not granted");
+          this.connectionStatus = "Bluetooth permissions not granted";
+          this.onStatusChanged?.();
+          return false;
         }
       }
 
       // Create event listeners
       this.setupEventListeners();
 
+      // Force check the current state
+      const currentState = await this.getCurrentState();
+      console.log("Initial Bluetooth state:", currentState);
+
+      if (currentState !== "PoweredOn") {
+        this.connectionStatus = `Bluetooth is ${currentState}`;
+        this.onStatusChanged?.();
+      } else {
+        this.connectionStatus = "Ready to scan";
+        this.onStatusChanged?.();
+      }
+
       return true;
     } catch (error) {
       console.error("Error initializing BLE manager:", error);
+      this.connectionStatus = "BLE initialization failed";
+      this.onStatusChanged?.();
       return false;
+    }
+  }
+
+  // Get current Bluetooth state
+  private async getCurrentState(): Promise<string> {
+    if (!this.manager) return "Unknown";
+
+    try {
+      return await new Promise<string>((resolve) => {
+        // Get state once
+        this.manager!.state()
+          .then((state) => {
+            resolve(state);
+          })
+          .catch((err) => {
+            console.error("Error getting BLE state:", err);
+            resolve("Unknown");
+          });
+
+        // Set timeout in case state never resolves
+        setTimeout(() => resolve("Unknown"), 5000);
+      });
+    } catch (error) {
+      console.error("Error getting current state:", error);
+      return "Unknown";
     }
   }
 
@@ -95,51 +139,92 @@ class BleManager {
   private setupEventListeners(): void {
     if (!this.manager) return;
 
+    console.log("Setting up BLE event listeners");
+
     // Add event listener for state changes
     this.listeners.push(
       this.manager.onStateChange((state) => {
+        console.log("BLE state changed to:", state);
+
         if (state === "PoweredOn") {
           console.log("BLE is powered on");
+          this.connectionStatus = "Ready to scan";
         } else {
           this.stopScan();
           this.disconnectDevice();
           this.connectionStatus = `Bluetooth is ${state}`;
-          this.onStatusChanged?.();
+          if (state === "Unknown") {
+            console.log(
+              "Bluetooth state is Unknown - device might not support Bluetooth or permissions issue"
+            );
+          } else if (state === "PoweredOff") {
+            console.log(
+              "Bluetooth is turned off - please enable Bluetooth in settings"
+            );
+          }
         }
+        this.onStatusChanged?.();
       }, true)
     );
   }
 
   // Start scanning for BLE devices
   public startScan(): void {
-    if (this.isScanning || !this.manager) return;
+    if (this.isScanning || !this.manager) {
+      console.log(
+        "Cannot start scan: already scanning or manager not initialized"
+      );
+      return;
+    }
 
-    this.isScanning = true;
-    this.devices = [];
-
-    // Start scanning with timeout
-    this.manager.startDeviceScan(
-      null,
-      null,
-      (error: BleError | null, device: Device | null) => {
-        if (error) {
-          console.error("Error scanning:", error);
-          this.isScanning = false;
+    // Check if Bluetooth is powered on
+    this.manager
+      .state()
+      .then((state) => {
+        if (state !== "PoweredOn") {
+          console.log("Cannot scan, Bluetooth state is:", state);
+          this.connectionStatus = `Cannot scan, Bluetooth is ${state}`;
+          this.onStatusChanged?.();
           return;
         }
 
-        // Add device if not already in the list
-        if (device?.name && !this.devices.some((d) => d.id === device.id)) {
-          this.devices.push(device);
-          this.onStatusChanged?.();
-        }
-      }
-    );
+        console.log("Starting BLE scan");
+        this.isScanning = true;
+        this.devices = [];
+        this.onStatusChanged?.();
 
-    // Auto-stop scan after 10 seconds
-    setTimeout(() => {
-      this.stopScan();
-    }, 10000);
+        // Start scanning with timeout
+        this.manager!.startDeviceScan(
+          null,
+          null,
+          (error: BleError | null, device: Device | null) => {
+            if (error) {
+              console.error("Error scanning:", error);
+              this.isScanning = false;
+              this.connectionStatus = `Scan error: ${error.message}`;
+              this.onStatusChanged?.();
+              return;
+            }
+
+            // Add device if not already in the list
+            if (device?.name && !this.devices.some((d) => d.id === device.id)) {
+              console.log("Found device:", device.name, device.id);
+              this.devices.push(device);
+              this.onStatusChanged?.();
+            }
+          }
+        );
+
+        // Auto-stop scan after 10 seconds
+        setTimeout(() => {
+          this.stopScan();
+        }, 10000);
+      })
+      .catch((error) => {
+        console.error("Error checking Bluetooth state:", error);
+        this.connectionStatus = "Error checking Bluetooth state";
+        this.onStatusChanged?.();
+      });
   }
 
   // Stop scanning for devices
